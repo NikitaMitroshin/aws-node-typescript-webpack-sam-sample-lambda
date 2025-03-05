@@ -137,4 +137,4 @@ ISC
 
 ## Author
 
-[Nikita Mitroshyn]
+[Mikita Mitroshyn](https://www.linkedin.com/in/mikita-mitroshyn/)
