@@ -1,7 +1,7 @@
 {
-  "name": "sample-lambda",
+  "name": "article-processor-lambda",
   "version": "1.0.0",
-  "description": "Sample AWS Lambda function with TypeScript",
+  "description": "AWS Lambda function for processing articles and replacing Google with hyperlinks",
   "main": "dist/index.js",
   "scripts": {
     "build": "webpack",
@@ -9,10 +9,11 @@
     "test:coverage": "jest --coverage",
     "start": "sh ./run-local.sh",
     "package": "webpack",
-    "deploy": "webpack && aws lambda update-function-code --function-name sample-lambda --zip-file fileb://dist/lambda-function.zip"
+    "deploy": "webpack && aws lambda update-function-code --function-name article-processor-lambda --zip-file fileb://dist/lambda-function.zip"
   },
   "dependencies": {
-    "aws-lambda": "^1.0.7"
+    "aws-lambda": "^1.0.7",
+    "axios": "^1.6.2"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.126",
@@ -27,7 +28,7 @@
     "terser-webpack-plugin": "^5.3.9",
     "zip-webpack-plugin": "^4.0.1"
   },
-  "keywords": [],
+  "keywords": ["aws", "lambda", "article", "processing"],
   "author": "",
   "license": "ISC"
 } 

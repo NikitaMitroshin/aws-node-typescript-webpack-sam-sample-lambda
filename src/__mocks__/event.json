@@ -1,11 +1,11 @@
 {
-  "httpMethod": "GET",
-  "path": "/",
+  "httpMethod": "POST",
+  "path": "/process-article",
   "headers": {
     "Content-Type": "application/json"
   },
   "queryStringParameters": null,
   "pathParameters": null,
-  "body": null,
+  "body": "{\"articleId\":\"45bd40bcbd874ee8176ed90155839d3a\"}",
   "isBase64Encoded": false
 } 

@@ -1,0 +1,35 @@
+{
+  "id": "45bd40bcbd874ee8176ed90155839d3a",
+  "canonical_website": "test",
+  "content_elements": [
+    {
+      "_id": "b34d5a88083fec1c1c0e2d6755c03e0e",
+      "content": "Lorem Google ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut Google labore et dolore magna aliqua.",
+      "type": "text"
+    },
+    {
+      "_id": "ff1b161e537cb12ba5bfe2ef3d69179d",
+      "type": "reference"
+    },
+    {
+      "_id": "ff16c84e01ba11d46cede54e45561ec5",
+      "content": "Duis aute irure dolor Google in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat Google non proident, sunt in culpa qui officia deserunt mollit anim id est laborum",
+      "type": "text"
+    }
+  ],
+  "created_date": "2025-02-10T21:09:06.653Z",
+  "credits": {
+    "by": []
+  },
+  "display_date": "2025-02-10T21:09:11.339Z",
+  "headlines": {
+    "basic": "Headline"
+  },
+  "last_updated_date": "2025-02-26T16:42:41.777Z",
+  "publish_date": "2025-02-13T16:18:19.725Z",
+  "subheadlines": {
+    "basic": "Subheadline"
+  },
+  "type": "story",
+  "created_at": "2025-02-26T16:42:41.777Z"
+}

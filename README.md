@@ -1,14 +1,16 @@
-# AWS Lambda with Node.js 22, TypeScript, and Webpack
+# AWS Lambda Article Processor with Node.js 22, TypeScript, and Webpack
 
-This project demonstrates a sample AWS Lambda function built with Node.js 22 and TypeScript, bundled using Webpack, and locally testable using AWS SAM.
+This project demonstrates an AWS Lambda function built with Node.js 22 and TypeScript, bundled using Webpack, and locally testable using AWS SAM. The Lambda function processes articles by replacing occurrences of "Google" with hyperlinks.
 
 ## Project Overview
 
-This is a simple AWS Lambda function that:
-- Receives API Gateway events
-- Processes requests using a helper service
-- Returns structured JSON responses
-- Has proper error handling
+This Lambda function:
+- Receives API Gateway events with an article ID
+- Retrieves the draft revision of the article from an external API
+- Processes text elements by replacing "Google" with hyperlinks
+- Updates the draft revision with the processed content
+- Publishes the document
+- Uses exponential backoff for API request retries
 
 ## Prerequisites
 
@@ -26,9 +28,14 @@ This is a simple AWS Lambda function that:
 ├── src/                    # Source code
 │   ├── __mocks__/          # Mock data for testing
 │   ├── __tests__/          # Test files
-│   ├── helpers/            # Helper modules
+│   ├── services/           # Service modules
+│   │   ├── articlesApiService.ts    # API service for article operations
+│   │   └── articleProcessingService.ts # Service for processing article content
+│   ├── utils/              # Utility functions
+│   │   └── backoff.ts      # Exponential backoff implementation
 │   └── index.ts            # Main Lambda handler
 ├── .gitignore              # Git ignore file
+├── env.json                # Environment variables for local testing
 ├── jest.config.js          # Jest configuration
 ├── package.json            # NPM package configuration
 ├── run-local.sh            # Script to run the function locally
@@ -43,6 +50,15 @@ This is a simple AWS Lambda function that:
 2. Install dependencies:
    ```
    npm install
+   ```
+3. Update the `env.json` file with your API credentials:
+   ```json
+   {
+     "ArticleProcessorFunction": {
+       "API_BASE_URL": "https://your-api-url.com",
+       "API_TOKEN": "your-api-token"
+     }
+   }
    ```
 
 ## Development Workflow
@@ -86,7 +102,20 @@ You can also run the commands manually:
 ```
 npm run build
 sam build
-sam local invoke SampleFunction -e ./src/__mocks__/event.json --debug
+sam local invoke ArticleProcessorFunction -e ./src/__mocks__/event.json --debug --env-vars env.json
+```
+
+To test the API endpoint locally:
+
+```
+sam local start-api
+```
+
+Then send a POST request to http://localhost:3000/process-article with JSON body:
+```json
+{
+  "articleId": "45bd40bcbd874ee8176ed90155839d3a"
+}
 ```
 
 ## Deployment
@@ -101,7 +130,7 @@ This command will:
 1. Build the project with Webpack
 2. Update the Lambda function code in AWS
 
-Note: The deployment command assumes you have already created the Lambda function named `sample-lambda`. If you haven't, you need to create it first or use the AWS SAM deployment commands.
+Note: The deployment command assumes you have already created the Lambda function named `article-processor-lambda`. If you haven't, you need to create it first or use the AWS SAM deployment commands.
 
 ### SAM Deployment (Alternative)
 
@@ -115,12 +144,19 @@ sam deploy --guided
 ## API Endpoints
 
 When deployed, this function creates an API endpoint with:
-- Method: GET
-- Path: /
+- Method: POST
+- Path: /process-article
+
+The request body should include:
+```json
+{
+  "articleId": "your-article-id"
+}
+```
 
 The API returns a JSON response with:
 - A success message
-- Processing result
+- The article ID
 - Timestamp
 
 ## Configuration
@@ -128,8 +164,8 @@ The API returns a JSON response with:
 The function is configured with:
 - Runtime: Node.js 22.x
 - Architecture: x86_64
-- Memory: 128MB
-- Timeout: 10 seconds
+- Memory: 256MB
+- Timeout: 30 seconds
 
 ## License
 

@@ -7,6 +7,7 @@ npm run build
 sam build
 
 # Invoke the function locally using the event.json file
-sam local invoke SampleFunction \
+sam local invoke ArticleProcessorFunction \
     -e ./src/__mocks__/event.json \
-    --debug
+    --debug \
+    --env-vars env.json

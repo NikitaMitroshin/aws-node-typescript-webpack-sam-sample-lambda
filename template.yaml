@@ -1,9 +1,9 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Sample Lambda Function using TypeScript
+Description: AWS Lambda for processing articles and replacing Google with hyperlinks
 
 Resources:
-  SampleFunction:
+  ArticleProcessorFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: ./dist/
@@ -11,19 +11,30 @@ Resources:
       Runtime: nodejs22.x
       Architectures:
         - x86_64
-      MemorySize: 128
-      Timeout: 10
+      MemorySize: 256
+      Timeout: 30
+      Environment:
+        Variables:
+          API_BASE_URL: https://api.example.com
+          API_TOKEN: !Ref ApiToken
       Events:
         ApiEvent:
           Type: Api
           Properties:
-            Path: /
-            Method: GET
+            Path: /process-article
+            Method: POST
+
+Parameters:
+  ApiToken:
+    Type: String
+    Description: API token for the Articles API
+    Default: default-token
+    NoEcho: true
 
 Outputs:
-  SampleFunction:
-    Description: "Sample Lambda Function ARN"
-    Value: !GetAtt SampleFunction.Arn
-  SampleFunctionApi:
+  ArticleProcessorFunction:
+    Description: "Article Processor Lambda Function ARN"
+    Value: !GetAtt ArticleProcessorFunction.Arn
+  ArticleProcessorApi:
     Description: "API Gateway endpoint URL for Prod stage"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/" 
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/process-article" 

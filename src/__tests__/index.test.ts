@@ -1,76 +1,190 @@
-import {APIGatewayProxyEvent, APIGatewayProxyResult, Context} from 'aws-lambda';
-import {handler} from '../index';
-import * as mockEvent from '../__mocks__/event.json';
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import * as articlesApiServiceModule from '../services/articlesApiService';
+import * as articleProcessingServiceModule from '../services/articleProcessingService';
+import { withExponentialBackoff } from '../utils/backoff';
 
-// Mock console methods to avoid cluttering test output
-jest.spyOn(console, 'log').mockImplementation(() => {
-});
-jest.spyOn(console, 'error').mockImplementation(() => {
-});
+// Mock the withExponentialBackoff utility
+jest.mock('../utils/backoff');
 
-describe('Lambda Handler', () => {
-    let event: APIGatewayProxyEvent;
-    let context: Context;
+// Mock console methods
+jest.spyOn(console, 'log').mockImplementation(() => {});
+jest.spyOn(console, 'error').mockImplementation(() => {});
 
-    beforeEach(() => {
-        // Create a fresh copy of the event for each test
-        event = JSON.parse(JSON.stringify(mockEvent)) as APIGatewayProxyEvent;
+// Import the handler after setting up the mocks
+import { handler } from '../index';
 
-        // Mock Lambda context
-        context = {
-            callbackWaitsForEmptyEventLoop: true,
-            functionName: 'test-function',
-            functionVersion: '1',
-            invokedFunctionArn: 'arn:aws:lambda:us-east-1:123456789012:function:test-function',
-            memoryLimitInMB: '128',
-            awsRequestId: '1234567890',
-            logGroupName: '/aws/lambda/test-function',
-            logStreamName: '2021/01/01/[$LATEST]1234567890',
-            getRemainingTimeInMillis: () => 1000,
-            done: () => {
-            },
-            fail: () => {
-            },
-            succeed: () => {
-            },
-        };
+describe('Lambda Handler Tests', () => {
+  // Mock data
+  const articleId = '45bd40bcbd874ee8176ed90155839d3a';
+  const mockEvent: Partial<APIGatewayProxyEvent> = {
+    body: JSON.stringify({ articleId })
+  };
+  
+  // Mock API responses
+  const mockDraftRevision = {
+    id: articleId,
+    content_elements: [
+      {
+        _id: 'b34d5a88083fec1c1c0e2d6755c03e0e',
+        content: 'Lorem Google ipsum dolor sit amet',
+        type: 'text'
+      },
+      {
+        _id: 'ff1b161e537cb12ba5bfe2ef3d69179d',
+        type: 'reference'
+      }
+    ]
+  };
+  
+  const mockProcessedArticle = {
+    id: articleId,
+    content_elements: [
+      {
+        _id: 'b34d5a88083fec1c1c0e2d6755c03e0e',
+        content: 'Lorem <a href="https://www.google.com/" target="_blank">Google</a> ipsum dolor sit amet',
+        type: 'text'
+      },
+      {
+        _id: 'ff1b161e537cb12ba5bfe2ef3d69179d',
+        type: 'reference'
+      }
+    ]
+  };
+
+  // Mock implementations
+  const mockGetDraftRevision = jest.fn().mockResolvedValue(mockDraftRevision);
+  const mockUpdateDraftRevision = jest.fn().mockResolvedValue(undefined);
+  const mockPublishDocument = jest.fn().mockResolvedValue(undefined);
+  const mockProcessArticle = jest.fn().mockReturnValue(mockProcessedArticle);
+  
+  beforeEach(() => {
+    jest.clearAllMocks();
+    
+    // Mock the ArticlesApiService instance methods
+    jest.spyOn(articlesApiServiceModule.ArticlesApiService.prototype, 'getDraftRevision')
+      .mockImplementation(mockGetDraftRevision);
+    jest.spyOn(articlesApiServiceModule.ArticlesApiService.prototype, 'updateDraftRevision')
+      .mockImplementation(mockUpdateDraftRevision);
+    jest.spyOn(articlesApiServiceModule.ArticlesApiService.prototype, 'publishDocument')
+      .mockImplementation(mockPublishDocument);
+    
+    // Mock the ArticleProcessingService instance methods
+    jest.spyOn(articleProcessingServiceModule.ArticleProcessingService.prototype, 'processArticle')
+      .mockImplementation(mockProcessArticle);
+    
+    // Setup withExponentialBackoff mock to execute the function passed to it
+    (withExponentialBackoff as jest.Mock).mockImplementation((fn) => fn());
+  });
+
+  it('should process an article successfully', async () => {
+    // Execute the lambda
+    const result = await handler(mockEvent as APIGatewayProxyEvent);
+    
+    // Verify the result
+    expect(result.statusCode).toBe(200);
+    expect(JSON.parse(result.body)).toHaveProperty('message', 'Article processed and published successfully');
+    expect(JSON.parse(result.body)).toHaveProperty('articleId', articleId);
+    
+    // Verify service calls
+    expect(mockGetDraftRevision).toHaveBeenCalledWith(articleId);
+    expect(mockProcessArticle).toHaveBeenCalledWith(mockDraftRevision);
+    expect(mockUpdateDraftRevision).toHaveBeenCalledWith(articleId, mockProcessedArticle);
+    expect(mockPublishDocument).toHaveBeenCalledWith(articleId);
+    
+    // Verify withExponentialBackoff was used
+    expect(withExponentialBackoff).toHaveBeenCalledTimes(3);
+  });
+
+  it('should return 400 when articleId is missing', async () => {
+    // Create event without articleId
+    const eventWithoutArticleId: Partial<APIGatewayProxyEvent> = {
+      body: JSON.stringify({})
+    };
+    
+    // Execute the lambda
+    const result = await handler(eventWithoutArticleId as APIGatewayProxyEvent);
+    
+    // Verify the result
+    expect(result.statusCode).toBe(400);
+    expect(JSON.parse(result.body)).toHaveProperty('message', 'Missing required parameter: articleId');
+    
+    // Verify no service calls were made
+    expect(mockGetDraftRevision).not.toHaveBeenCalled();
+    expect(mockProcessArticle).not.toHaveBeenCalled();
+    expect(mockUpdateDraftRevision).not.toHaveBeenCalled();
+    expect(mockPublishDocument).not.toHaveBeenCalled();
+  });
+
+  it('should return 400 when body is missing', async () => {
+    // Create event without body
+    const eventWithoutBody: Partial<APIGatewayProxyEvent> = {};
+    
+    // Execute the lambda
+    const result = await handler(eventWithoutBody as APIGatewayProxyEvent);
+    
+    // Verify the result
+    expect(result.statusCode).toBe(400);
+    expect(JSON.parse(result.body)).toHaveProperty('message', 'Missing required parameter: articleId');
+  });
+
+  it('should return 500 when getDraftRevision fails', async () => {
+    // Setup getDraftRevision to fail
+    const error = new Error('API error');
+    (withExponentialBackoff as jest.Mock).mockImplementationOnce(() => {
+      throw error;
     });
+    
+    // Execute the lambda
+    const result = await handler(mockEvent as APIGatewayProxyEvent);
+    
+    // Verify the result
+    expect(result.statusCode).toBe(500);
+    expect(JSON.parse(result.body)).toHaveProperty('message', 'Error processing article');
+    expect(JSON.parse(result.body)).toHaveProperty('error', 'API error');
+  });
 
-    test('should return 200 response with success message', async () => {
-        // Act
-        const response = await handler(event) as APIGatewayProxyResult;
-        const body = JSON.parse(response.body);
+  it('should return 500 when updateDraftRevision fails', async () => {
+    // Setup updateDraftRevision to fail
+    (withExponentialBackoff as jest.Mock)
+      .mockImplementationOnce((fn) => fn()) // getDraftRevision succeeds
+      .mockImplementationOnce(() => {       // updateDraftRevision fails
+        throw new Error('Update failed');
+      });
+    
+    // Execute the lambda
+    const result = await handler(mockEvent as APIGatewayProxyEvent);
+    
+    // Verify the result
+    expect(result.statusCode).toBe(500);
+    expect(JSON.parse(result.body)).toHaveProperty('message', 'Error processing article');
+    expect(JSON.parse(result.body)).toHaveProperty('error', 'Update failed');
+    
+    // Verify service calls
+    expect(mockGetDraftRevision).toHaveBeenCalledWith(articleId);
+    expect(mockProcessArticle).toHaveBeenCalledWith(mockDraftRevision);
+    expect(mockPublishDocument).not.toHaveBeenCalled();
+  });
 
-        // Assert
-        expect(response.statusCode).toBe(200);
-        expect(response.headers).toHaveProperty('Content-Type', 'application/json');
-        expect(body).toHaveProperty('message', 'Lambda function executed successfully');
-        expect(body.result).toHaveProperty('success', true);
-        expect(body.result.message).toContain('Request processed successfully');
-        expect(body).toHaveProperty('timestamp');
-    });
-
-    test('should handle errors gracefully', async () => {
-        // Arrange
-        // Mock HelperService to throw an error for this test
-        const originalProcessRequest = require('../helpers/helper').HelperService.prototype.processRequest;
-        require('../helpers/helper').HelperService.prototype.processRequest = jest.fn().mockImplementation(() => {
-            throw new Error('Test error');
-        });
-
-        try {
-            // Act
-            const response = await handler(event) as APIGatewayProxyResult;
-            const body = JSON.parse(response.body);
-
-            // Assert
-            expect(response.statusCode).toBe(500);
-            expect(response.headers).toHaveProperty('Content-Type', 'application/json');
-            expect(body).toHaveProperty('message', 'Error processing request');
-            expect(body).toHaveProperty('error', 'Test error');
-        } finally {
-            // Restore the original method
-            require('../helpers/helper').HelperService.prototype.processRequest = originalProcessRequest;
-        }
-    });
+  it('should return 500 when publishDocument fails', async () => {
+    // Setup publishDocument to fail
+    (withExponentialBackoff as jest.Mock)
+      .mockImplementationOnce((fn) => fn()) // getDraftRevision succeeds
+      .mockImplementationOnce((fn) => fn()) // updateDraftRevision succeeds
+      .mockImplementationOnce(() => {       // publishDocument fails
+        throw new Error('Publish failed');
+      });
+    
+    // Execute the lambda
+    const result = await handler(mockEvent as APIGatewayProxyEvent);
+    
+    // Verify the result
+    expect(result.statusCode).toBe(500);
+    expect(JSON.parse(result.body)).toHaveProperty('message', 'Error processing article');
+    expect(JSON.parse(result.body)).toHaveProperty('error', 'Publish failed');
+    
+    // Verify service calls
+    expect(mockGetDraftRevision).toHaveBeenCalledWith(articleId);
+    expect(mockProcessArticle).toHaveBeenCalledWith(mockDraftRevision);
+    expect(mockUpdateDraftRevision).toHaveBeenCalledWith(articleId, mockProcessedArticle);
+  });
 }); 
