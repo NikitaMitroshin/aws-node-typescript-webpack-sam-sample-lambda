@@ -17,12 +17,6 @@ Resources:
         Variables:
           API_BASE_URL: https://api.example.com
           API_TOKEN: !Ref ApiToken
-      Events:
-        ApiEvent:
-          Type: Api
-          Properties:
-            Path: /process-article
-            Method: POST
 
 Parameters:
   ApiToken:
@@ -30,11 +24,3 @@ Parameters:
     Description: API token for the Articles API
     Default: default-token
     NoEcho: true
-
-Outputs:
-  ArticleProcessorFunction:
-    Description: "Article Processor Lambda Function ARN"
-    Value: !GetAtt ArticleProcessorFunction.Arn
-  ArticleProcessorApi:
-    Description: "API Gateway endpoint URL for Prod stage"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/process-article" 
