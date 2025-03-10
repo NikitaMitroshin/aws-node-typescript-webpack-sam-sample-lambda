@@ -174,3 +174,55 @@ ISC
 ## Author
 
 [Mikita Mitroshyn](https://www.linkedin.com/in/mikita-mitroshyn/)
+
+## Terraform Deployment (Sample)
+
+The project includes sample Terraform scripts in the `terraform` directory that demonstrate how to deploy the Lambda function to AWS using Infrastructure as Code. These scripts are provided as examples and have not been tested in AWS, but they illustrate how such scripts could be used in a CI/CD pipeline.
+
+### Terraform Structure
+
+```
+terraform/
+├── lambda.tf          # Lambda function configuration
+├── provider.tf        # AWS provider configuration
+├── variable.tf        # Variables and environment-specific settings
+└── .gitignore         # Git ignore file for Terraform
+```
+
+### Key Features
+
+- **Environment-based deployment**: The scripts support different environments (Staging and Production) using Terraform workspaces
+- **Environment-specific variables**: Different API tokens and endpoints for each environment
+- **IAM role assumption**: The scripts assume a specific IAM role for deployment
+- **Lambda configuration**: Includes memory, timeout, and environment variable settings
+
+### Usage Example
+
+To use these Terraform scripts (after proper testing and configuration):
+
+1. Navigate to the terraform directory:
+   ```
+   cd terraform
+   ```
+
+2. Initialize Terraform:
+   ```
+   terraform init
+   ```
+
+3. Select the workspace (environment):
+   ```
+   terraform workspace select Staging  # or Prod
+   ```
+
+4. Plan the deployment:
+   ```
+   terraform plan -var="api_token_staging=your-staging-token" -var="api_token_prod=your-prod-token"
+   ```
+
+5. Apply the changes:
+   ```
+   terraform apply -var="api_token_staging=your-staging-token" -var="api_token_prod=your-prod-token"
+   ```
+
+**Note**: These scripts are provided as examples only and would need to be adapted to your specific AWS environment and requirements before use in a production setting.
